@@ -113,9 +113,19 @@ if not st.session_state.logged_in:
             st.error("Usuario o contraseña incorrectos")
 
 else:
-    menu = st.sidebar.radio("Menú", ["Dashboard", "Registrar Movimiento", "Categorías", "Editar Movimiento"])
+    # ---------------------------
+    # Menú Estilizado
+    # ---------------------------
+    st.sidebar.markdown("## 📌 Menú Principal")
+    menu = st.sidebar.selectbox(
+        "Selecciona una opción:",
+        ["🏠 Dashboard", "📝 Registrar Movimiento", "📂 Categorías", "✏️ Editar Movimiento"]
+    )
 
-    if menu == "Dashboard":
+    # ---------------------------
+    # Dashboard
+    # ---------------------------
+    if menu == "🏠 Dashboard":
         st.title("💰 Dashboard de Presupuesto")
 
         df = obtener_movimientos()
@@ -151,14 +161,22 @@ else:
                     fig2 = px.pie(gastos_df, names="Categoría", values="Importe", title="Gastos Variables")
                     st.plotly_chart(fig2, use_container_width=True)
 
+            # 📊 Distribución de gastos variables
+            gastos_df = df[df["Tipo"]=="Gasto"]
+            if not gastos_df.empty:
+                st.subheader("📊 Distribución de Gastos Variables")
+                fig3 = px.histogram(gastos_df, x="Importe", nbins=10, title="Distribución de montos de gastos")
+                st.plotly_chart(fig3, use_container_width=True)
+
             ahorro_df = df[df["Tipo"]=="Ahorro"]
             if not ahorro_df.empty:
-                fig3 = px.pie(ahorro_df, names="Categoría", values="Importe", title="Ahorro vs Inversión")
-                st.plotly_chart(fig3, use_container_width=True)
+                fig4 = px.pie(ahorro_df, names="Categoría", values="Importe", title="Ahorro vs Inversión")
+                st.plotly_chart(fig4, use_container_width=True)
 
             st.subheader("📊 Movimientos")
             st.dataframe(df)
 
+            # 📥 Botón para descargar CSV
             st.download_button(
                 "📥 Descargar movimientos (CSV)",
                 df.to_csv(index=False).encode("utf-8"),
@@ -166,7 +184,20 @@ else:
                 "text/csv"
             )
 
-    elif menu == "Registrar Movimiento":
+            # 📥 Botón para descargar la base de datos SQLite
+            if os.path.exists(DB_FILE):
+                with open(DB_FILE, "rb") as f:
+                    st.download_button(
+                        "📥 Descargar Base de Datos (SQLite)",
+                        f,
+                        file_name=DB_FILE,
+                        mime="application/octet-stream"
+                    )
+
+    # ---------------------------
+    # Registrar Movimiento
+    # ---------------------------
+    elif menu == "📝 Registrar Movimiento":
         st.title("📝 Registrar Movimiento")
 
         tipo = st.radio("Tipo", ["Ingreso", "Gasto", "Ahorro"])
@@ -181,7 +212,10 @@ else:
             agregar_movimiento(str(fecha), importe, descripcion, categoria, tipo)
             st.success("Movimiento guardado correctamente ✅")
 
-    elif menu == "Categorías":
+    # ---------------------------
+    # Categorías
+    # ---------------------------
+    elif menu == "📂 Categorías":
         st.title("📂 Categorías")
 
         nueva_cat = st.text_input("Nueva categoría")
@@ -192,7 +226,10 @@ else:
         st.subheader("Categorías existentes")
         st.write(obtener_categorias())
 
-    elif menu == "Editar Movimiento":
+    # ---------------------------
+    # Editar Movimiento
+    # ---------------------------
+    elif menu == "✏️ Editar Movimiento":
         st.title("✏️ Editar Movimiento")
 
         df = obtener_movimientos()
