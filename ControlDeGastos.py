@@ -1,74 +1,152 @@
-# ControlDeGastos.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import sqlite3
+from datetime import datetime
 
+# ---------------------------
+# Configuración
+# ---------------------------
 st.set_page_config(page_title="Dashboard Presupuesto", layout="wide")
-st.title("💰 Dashboard de Presupuesto Interactivo")
 
-mes = st.text_input("Mes:", "Junio")
+USERS = {"Nava": "Nava", "Smarilynr": "Smarilynr"}  # usuarios y passwords
 
-default_ingresos = {
-    "Concepto": ["Salario", "Freelance", "Otros"],
-    "Esperado": [2700, 500, 100],
-    "Real": [2748.5, 400, 0]
-}
+# ---------------------------
+# Inicializar BD
+# ---------------------------
+def init_db():
+    conn = sqlite3.connect("presupuesto.db")
+    c = conn.cursor()
 
-default_facturas = {
-    "Concepto": ["Hipoteca", "Luz", "Teléfono", "Internet", "Tarjeta crédito"],
-    "Gasto previsto": [450, 50, 45, 60, 79.9],
-    "Gasto real": [450, 50, 45, 60, 79.9]
-}
+    # Tabla de categorías
+    c.execute('''CREATE TABLE IF NOT EXISTS categorias (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre TEXT UNIQUE
+                )''')
 
-default_gastos = {
-    "Categoría": ["Transporte", "Alimentación", "Ropa", "Entretenimiento", "Tecnología", "Salud", "Mascotas", "Otros"],
-    "Gasto previsto": [150, 500, 50, 150, 100, 50, 50, 50],
-    "Gasto real": [165.55, 450, 70, 140, 120, 40, 30, 50]
-}
+    # Tabla de movimientos (ingresos/gastos)
+    c.execute('''CREATE TABLE IF NOT EXISTS movimientos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fecha TEXT,
+                    importe REAL,
+                    descripcion TEXT,
+                    categoria TEXT,
+                    tipo TEXT
+                )''')
+    conn.commit()
+    conn.close()
 
-default_ahorro = {
-    "Concepto": ["Ahorro", "Inversión"],
-    "Cantidad final": [1200, 840]
-}
+init_db()
 
-st.sidebar.header("Editar Datos")
-df_ingresos = st.sidebar.data_editor(pd.DataFrame(default_ingresos))
-df_facturas = st.sidebar.data_editor(pd.DataFrame(default_facturas))
-df_gastos = st.sidebar.data_editor(pd.DataFrame(default_gastos))
-df_ahorro = st.sidebar.data_editor(pd.DataFrame(default_ahorro))
+# ---------------------------
+# Funciones de BD
+# ---------------------------
+def agregar_categoria(nombre):
+    conn = sqlite3.connect("presupuesto.db")
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO categorias (nombre) VALUES (?)", (nombre,))
+        conn.commit()
+    except:
+        pass  # ya existe
+    conn.close()
 
-total_ingresos = df_ingresos["Real"].sum()
-total_facturas = df_facturas["Gasto real"].sum()
-total_gastos = df_gastos["Gasto real"].sum()
-total_ahorro = df_ahorro["Cantidad final"].sum()
-total_gastos_totales = total_facturas + total_gastos
-diferencia = total_ingresos - total_gastos_totales - total_ahorro
+def obtener_categorias():
+    conn = sqlite3.connect("presupuesto.db")
+    c = conn.cursor()
+    c.execute("SELECT nombre FROM categorias")
+    cats = [row[0] for row in c.fetchall()]
+    conn.close()
+    return cats
 
-st.subheader(f"📊 Resumen presupuesto {mes}")
-col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Total Ingresos", f"${total_ingresos:.2f}")
-col2.metric("Facturas y Crédito", f"${total_facturas:.2f}")
-col3.metric("Gastos Variables", f"${total_gastos:.2f}")
-col4.metric("Ahorro e Inversión", f"${total_ahorro:.2f}")
-col5.metric("Diferencia", f"${diferencia:.2f}")
+def agregar_movimiento(fecha, importe, descripcion, categoria, tipo):
+    conn = sqlite3.connect("presupuesto.db")
+    c = conn.cursor()
+    c.execute("INSERT INTO movimientos (fecha, importe, descripcion, categoria, tipo) VALUES (?, ?, ?, ?, ?)",
+              (fecha, importe, descripcion, categoria, tipo))
+    conn.commit()
+    conn.close()
 
-st.subheader("📈 Gráficos")
-# col1, col2 = st.columns(2)
+def obtener_movimientos():
+    conn = sqlite3.connect("presupuesto.db")
+    c = conn.cursor()
+    c.execute("SELECT fecha, importe, descripcion, categoria, tipo FROM movimientos")
+    data = c.fetchall()
+    conn.close()
+    return pd.DataFrame(data, columns=["Fecha", "Importe", "Descripción", "Categoría", "Tipo"])
 
-# with col1:
-#     st.subheader("Ingresos vs Gastos")
-#     df_comparacion = pd.DataFrame({
-#         "Categoría": ["Ingresos", "Gastos Totales"],
-#         "Monto": [total_ingresos, total_gastos_totales]
-#     })
-#     fig1 = px.bar(df_comparacion, x="Categoría", y="Monto", color="Categoría", text="Monto")
-#     st.plotly_chart(fig1, use_container_width=True)
+# ---------------------------
+# Login
+# ---------------------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-with col2:
-    st.subheader("Distribución Gastos Variables")
-    fig2 = px.pie(df_gastos, names="Categoría", values="Gasto real", title="Gastos Variables")
-    st.plotly_chart(fig2, use_container_width=True)
+if not st.session_state.logged_in:
+    st.title("🔑 Login")
+    username = st.text_input("Usuario")
+    password = st.text_input("Contraseña", type="password")
+    if st.button("Iniciar Sesión"):
+        if username in USERS and USERS[username] == password:
+            st.session_state.logged_in = True
+            st.success(f"Bienvenido {username} 👋")
+            st.rerun()
+        else:
+            st.error("Usuario o contraseña incorrectos")
 
-st.subheader("Ahorro e Inversión")
-fig3 = px.pie(df_ahorro, names="Concepto", values="Cantidad final", title="Ahorro vs Inversión")
-st.plotly_chart(fig3, use_container_width=True)
+else:
+    # ---------------------------
+    # Navegación
+    # ---------------------------
+    menu = st.sidebar.radio("Menú", ["Dashboard", "Registrar Movimiento", "Categorías"])
+
+    if menu == "Dashboard":
+        st.title("💰 Dashboard de Presupuesto")
+
+        df = obtener_movimientos()
+
+        if df.empty:
+            st.info("No hay datos aún. Registra tus ingresos y gastos.")
+        else:
+            # Totales
+            total_ingresos = df[df["Tipo"]=="Ingreso"]["Importe"].sum()
+            total_gastos = df[df["Tipo"]=="Gasto"]["Importe"].sum()
+            diferencia = total_ingresos - total_gastos
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Ingresos", f"${total_ingresos:.2f}")
+            col2.metric("Gastos", f"${total_gastos:.2f}")
+            col3.metric("Balance", f"${diferencia:.2f}")
+
+            st.subheader("📊 Movimientos")
+            st.dataframe(df)
+
+            # Gráficos
+            st.subheader("Distribución por categoría")
+            if not df[df["Tipo"]=="Gasto"].empty:
+                gastos_cat = df[df["Tipo"]=="Gasto"].groupby("Categoría")["Importe"].sum().reset_index()
+                st.bar_chart(gastos_cat.set_index("Categoría"))
+
+    elif menu == "Registrar Movimiento":
+        st.title("📝 Registrar Movimiento")
+
+        tipo = st.radio("Tipo", ["Ingreso", "Gasto"])
+        fecha = st.date_input("Fecha", datetime.today())
+        importe = st.number_input("Importe", min_value=0.0, step=0.5)
+        descripcion = st.text_input("Descripción")
+
+        categorias = obtener_categorias()
+        categoria = st.selectbox("Categoría", categorias)
+
+        if st.button("Guardar"):
+            agregar_movimiento(str(fecha), importe, descripcion, categoria, tipo)
+            st.success("Movimiento guardado correctamente ✅")
+
+    elif menu == "Categorías":
+        st.title("📂 Categorías")
+
+        nueva_cat = st.text_input("Nueva categoría")
+        if st.button("Agregar categoría"):
+            agregar_categoria(nueva_cat)
+            st.success("Categoría agregada ✅")
+
+        st.subheader("Categorías existentes")
+        st.write(obtener_categorias())
