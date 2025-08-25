@@ -53,16 +53,16 @@ col4.metric("Ahorro e Inversión", f"${total_ahorro:.2f}")
 col5.metric("Diferencia", f"${diferencia:.2f}")
 
 st.subheader("📈 Gráficos")
-col1, col2 = st.columns(2)
+# col1, col2 = st.columns(2)
 
-with col1:
-    st.subheader("Ingresos vs Gastos")
-    df_comparacion = pd.DataFrame({
-        "Categoría": ["Ingresos", "Gastos Totales"],
-        "Monto": [total_ingresos, total_gastos_totales]
-    })
-    fig1 = px.bar(df_comparacion, x="Categoría", y="Monto", color="Categoría", text="Monto")
-    st.plotly_chart(fig1, use_container_width=True)
+# with col1:
+#     st.subheader("Ingresos vs Gastos")
+#     df_comparacion = pd.DataFrame({
+#         "Categoría": ["Ingresos", "Gastos Totales"],
+#         "Monto": [total_ingresos, total_gastos_totales]
+#     })
+#     fig1 = px.bar(df_comparacion, x="Categoría", y="Monto", color="Categoría", text="Monto")
+#     st.plotly_chart(fig1, use_container_width=True)
 
 with col2:
     st.subheader("Distribución Gastos Variables")
