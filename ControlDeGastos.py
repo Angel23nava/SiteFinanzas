@@ -9,7 +9,13 @@ import os
 # Configuración
 # ---------------------------
 st.set_page_config(page_title="Presupuesto Mensual", layout="wide")
+
 st.write("DB_HOST =", os.getenv("DB_HOST"))
+st.write("DB_PORT =", os.getenv("DB_PORT"))
+st.write("DB_HOST =", os.getenv("DB_HOST"))
+st.write("DB_NAME =", os.getenv("DB_NAME"))
+st.write("DB_USER =", os.getenv("DB_USER"))
+st.write("DB_PASS =", os.getenv("DB_PASS"))
 st.write("DB_PORT =", os.getenv("DB_PORT"))
 USERS = {"Nava": "Nava", "Smarilynr": "Smarilynr"}  # usuarios y passwords
 
@@ -237,4 +243,5 @@ else:
                     actualizar_movimiento(movimiento_id, str(fecha), importe, descripcion, categoria, tipo, st.session_state.username)
                     st.success("Movimiento actualizado ✅")
                     st.rerun()
+
 
